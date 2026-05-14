@@ -1,21 +1,22 @@
-import os
 import discord
 from discord import app_commands
 from discord.ext import commands
+
+from .env_utils import get_int_env
 
 
 class ServerCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.owner_id = int(os.getenv("DISCORD_OWNER_ID", "0"))
+        self.owner_id = get_int_env("DISCORD_OWNER_ID")
 
     @app_commands.command(
         name="server",
-        description="(Owner) Показать список серверов, где есть бот."
+        description="Показать список серверов, где есть бот (только владелец)"
     )
     async def server(self, interaction: discord.Interaction):
         # ✅ Защита: только владелец бота
-        if self.owner_id and interaction.user.id != self.owner_id:
+        if not self.owner_id or interaction.user.id != self.owner_id:
             return await interaction.response.send_message(
                 "❌ У тебя нет доступа к этой команде.",
                 ephemeral=True
@@ -34,11 +35,11 @@ class ServerCog(commands.Cog):
             text = text[:3800] + "\n… (слишком много серверов, обрезано)"
 
         embed = discord.Embed(
-            title="🌐 Servers list",
+            title="🌐 Список серверов",
             description=f"Бот находится на **{total}** сервер(ах):\n\n{text}",
             color=0x2F3136
         )
-        embed.set_footer(text=f"Requested by {interaction.user}")
+        embed.set_footer(text=f"Запросил: {interaction.user}")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

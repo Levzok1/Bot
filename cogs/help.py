@@ -12,31 +12,29 @@ class Help(commands.Cog):
     async def help(self, interaction: discord.Interaction):
 
         embed = discord.Embed(
-            title="Command list",
-            description="Команды на английском языке, описания на русском.",
+            title="Список команд",
+            description="Список доступных slash-команд с описаниями на русском.",
             color=discord.Color.blurple()
         )
 
         # 🛡 MODERATION
         embed.add_field(
-            name="🛡 Moderation",
+            name="🛡 Модерация",
             value=(
-                "`/ban @user [reason]` — Забанить участника.\n"
-                "`/unban user_id [reason]` — Разбанить участника по ID.\n"
-                "`/mute @user [reason]` — Выдать мут (роль Muted).\n"
-                "`/unmute @user` — Снять мут.\n"
-                "`/warn @user [reason]` — Выдать предупреждение.\n"
-                "`/warns @user` — Показать предупреждения участника.\n"
-                "`/clear amount` — Удалить последние сообщения.\n"
-                "`/history @user` — История модерации участника.\n"
-                "`/setlog #channel` — Указать канал для логов."
+                "`/clear amount [channel]` — Удалить последние сообщения в канале.\n"
+                "`/kick member [reason]` — Кикнуть участника.\n"
+                "`/ban member [reason] [delete_messages]` — Забанить участника.\n"
+                "`/mban member1 [member2] [reason] [delete_messages]` — Забанить до двух участников.\n"
+                "`/randban [count] [reason]` — Рандомно забанить до 10 участников.\n"
+                "`/unban user [reason]` — Разбанить пользователя.\n"
+                "`/modlog [user]` — Показать журнал модерации сервера или пользователя."
             ),
             inline=False
         )
 
         # 🚫 ANTIMAT
         embed.add_field(
-            name="🚫 Antimat",
+            name="🚫 Антимат",
             value=(
                 "`/addword word` — Добавить запрещённое слово.\n"
                 "`/delword word` — Удалить запрещённое слово.\n"
@@ -45,39 +43,68 @@ class Help(commands.Cog):
             inline=False
         )
 
-        # 🎮 GAMES
+        # 🎮 ИГРЫ
         embed.add_field(
-            name="🎮 Games",
+            name="🎮 Игры",
             value=(
-                "`/cs` — Команды/информация по CS.\n"
-                "`/valorant` — Команды/информация по Valorant.\n"
-                "`/fortnite` — Команды/информация по Fortnite."
+                "`/cs info` — Информация о CS-разделе.\n"
+                "`/cs rules` — Правила CS.\n"
+                "`/cs ranks` — Список CS-рангов.\n"
+                "`/valorant nickname` — Пример статистики Valorant.\n"
+                "`/fortnite nickname` — Пример статистики Fortnite."
             ),
             inline=False
         )
 
-        # 🎵 MUSIC
+        # 🎵 МУЗЫКА
         embed.add_field(
-            name="🎵 Music",
+            name="🎵 Музыка",
             value=(
-                "`/music` — Музыкальная панель / команды музыки."
+                "`/join` — Подключить бота в голосовой канал.\n"
+                "`/leave` — Отключить бота из голосового канала.\n"
+                "`/play query` — Проиграть трек по ссылке или названию.\n"
+                "`/skip` — Пропустить текущий трек.\n"
+                "`/stop` — Остановить музыку и очистить очередь.\n"
+                "`/pause` — Поставить музыку на паузу.\n"
+                "`/resume` — Продолжить музыку.\n"
+                "`/queue` — Показать очередь треков."
             ),
             inline=False
         )
 
-        # 🛠 DEV PANEL
+        # ⚙️ НАСТРОЙКИ СЕРВЕРА
         embed.add_field(
-            name="🛠 Dev panel",
+            name="⚙️ Настройки сервера",
             value=(
-                "`/givebot @user` — Выдать доступ к использованию бота.\n"
-                "`/takebot @user` — Забрать доступ к использованию бота."
+                "`/config view` — Показать настройки сервера.\n"
+                "`/config set key value` — Установить настройку для сервера.\n"
+                "`/config delete key` — Удалить настройку сервера."
             ),
             inline=False
         )
 
-        # ℹ GENERAL
+        # 🌐 СЕРВЕРЫ И ИНВАЙТЫ
         embed.add_field(
-            name="ℹ General",
+            name="🌐 Серверы и инвайты",
+            value=(
+                "`/server` — Показать список серверов, где есть бот (владелец только).\n"
+                "`/invites` — Получить инвайты на сервера, где есть бот (владелец только)."
+            ),
+            inline=False
+        )
+
+        # 🛠 ПАНЕЛЬ РАЗРАБОТЧИКА
+        embed.add_field(
+            name="🛠 Панель разработчика",
+            value=(
+                "`/dev action` — Панель разработчика / перезагрузка / статистика / выключение бота."
+            ),
+            inline=False
+        )
+
+        # ℹ ОБЩЕЕ
+        embed.add_field(
+            name="ℹ Общее",
             value=(
                 "`/help` — Показать это меню помощи."
             ),
@@ -85,7 +112,7 @@ class Help(commands.Cog):
         )
 
         embed.set_footer(
-            text=f"Requested by {interaction.user}",
+            text=f"Запросил: {interaction.user}",
             icon_url=interaction.user.display_avatar.url
         )
 

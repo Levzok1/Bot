@@ -1,13 +1,14 @@
-import os
 import discord
 from discord.ext import commands
 from discord import app_commands
 
-OWNER_ID = int(os.getenv("DISCORD_OWNER_ID", "0"))
+from .env_utils import chunk_text, get_int_env
+
+OWNER_ID = get_int_env("DISCORD_OWNER_ID")
 
 
 def owner_only(interaction: discord.Interaction):
-    return interaction.user.id == OWNER_ID
+    return bool(OWNER_ID) and interaction.user.id == OWNER_ID
 
 
 class DevPanel(commands.Cog):
@@ -16,12 +17,12 @@ class DevPanel(commands.Cog):
 
     # ========= SLASH =========
 
-    @app_commands.command(name="dev", description="Developer commands")
+    @app_commands.command(name="dev", description="Команды разработчика")
     @app_commands.describe(action="panel / servers / invites / shutdown / botinfo")
     async def dev(self, interaction: discord.Interaction, action: str):
         if not owner_only(interaction):
             return await interaction.response.send_message(
-                "❌ Access denied.", ephemeral=True
+                "❌ Доступ запрещён.", ephemeral=True
             )
 
         if interaction.guild is not None:
@@ -40,16 +41,10 @@ class DevPanel(commands.Cog):
             )
 
         elif action == "servers":
-            await interaction.response.send_message(
-                self.get_servers(),
-                ephemeral=True
-            )
+            await self.send_long_response(interaction, self.get_servers())
 
         elif action == "invites":
-            await interaction.response.send_message(
-                await self.get_invites(),
-                ephemeral=True
-            )
+            await self.send_long_response(interaction, await self.get_invites())
 
         elif action == "botinfo":
             await interaction.response.send_message(
@@ -58,29 +53,35 @@ class DevPanel(commands.Cog):
             )
 
         elif action == "shutdown":
-            await interaction.response.send_message("⛔ Bot shutting down...", ephemeral=True)
+            await interaction.response.send_message("⛔ Бот выключается...", ephemeral=True)
             await self.bot.close()
 
         else:
             await interaction.response.send_message(
-                "❌ Unknown action.",
+                "❌ Неизвестное действие.",
                 ephemeral=True
             )
 
     # ========= HELPERS =========
 
+    async def send_long_response(self, interaction: discord.Interaction, text: str) -> None:
+        chunks = chunk_text(text)
+        await interaction.response.send_message(chunks[0], ephemeral=True)
+        for chunk in chunks[1:]:
+            await interaction.followup.send(chunk, ephemeral=True)
+
     def panel_embed(self):
         embed = discord.Embed(
-            title="🖥 Developer Control Panel",
-            description="Управление ботом (DM only)",
+            title="🖥 Панель разработчика",
+            description="Управление ботом (только в личных сообщениях)",
             color=0x2F3136
         )
-        embed.add_field(name="🌐 Servers", value="Список серверов", inline=True)
-        embed.add_field(name="📩 Invites", value="Инвайты", inline=True)
-        embed.add_field(name="🔄 Reload", value="Перезагрузка cog", inline=True)
-        embed.add_field(name="🚪 Leave", value="Выход с сервера", inline=True)
-        embed.add_field(name="⚙️ Bot Info", value="Информация о боте", inline=True)
-        embed.add_field(name="⛔ Shutdown", value="Выключить бота", inline=True)
+        embed.add_field(name="🌐 Серверы", value="Список серверов", inline=True)
+        embed.add_field(name="📩 Инвайты", value="Инвайты", inline=True)
+        embed.add_field(name="🔄 Перезагрузить", value="Перезагрузка cog", inline=True)
+        embed.add_field(name="🚪 Выйти", value="Выход с сервера", inline=True)
+        embed.add_field(name="⚙️ Инфо бота", value="Информация о боте", inline=True)
+        embed.add_field(name="⛔ Выключить", value="Выключить бота", inline=True)
         return embed
 
     def get_servers(self):
@@ -90,16 +91,20 @@ class DevPanel(commands.Cog):
         return "\n".join(lines) or "Бот не на серверах."
 
     async def get_invites(self):
-        text = ""
+        lines = []
         for g in self.bot.guilds:
-            link = "❌ No access"
-            for ch in g.text_channels:
-                if ch.permissions_for(g.me).create_instant_invite:
-                    invite = await ch.create_invite(max_age=3600, max_uses=1)
-                    link = invite.url
-                    break
-            text += f"\n**{g.name}**\n{link}\n"
-        return text or "Нет серверов."
+            link = "❌ Нет доступа"
+            if g.me is not None:
+                for ch in g.text_channels:
+                    try:
+                        if ch.permissions_for(g.me).create_instant_invite:
+                            invite = await ch.create_invite(max_age=3600, max_uses=1)
+                            link = invite.url
+                            break
+                    except discord.HTTPException:
+                        continue
+            lines.append(f"**{g.name}**\n{link}")
+        return "\n\n".join(lines) or "Нет серверов."
 
     def bot_info(self):
         return (
@@ -117,16 +122,20 @@ class DevPanelView(discord.ui.View):
         super().__init__(timeout=None)
         self.bot = bot
 
-    @discord.ui.button(label="🌐 Servers", style=discord.ButtonStyle.primary)
+    @discord.ui.button(label="🌐 Серверы", style=discord.ButtonStyle.primary)
     async def servers(self, interaction: discord.Interaction, _):
-        await interaction.response.send_message(
-            "\n".join(f"{g.name} ({g.id})" for g in self.bot.guilds),
-            ephemeral=True
-        )
+        if not owner_only(interaction):
+            return await interaction.response.send_message("❌ Доступ запрещён.", ephemeral=True)
 
-    @discord.ui.button(label="⛔ Shutdown", style=discord.ButtonStyle.danger)
+        text = "\n".join(f"{g.name} ({g.id})" for g in self.bot.guilds) or "Нет серверов."
+        await interaction.response.send_message(chunk_text(text)[0], ephemeral=True)
+
+    @discord.ui.button(label="⛔ Выключить", style=discord.ButtonStyle.danger)
     async def shutdown(self, interaction: discord.Interaction, _):
-        await interaction.response.send_message("⛔ Bot shutting down...", ephemeral=True)
+        if not owner_only(interaction):
+            return await interaction.response.send_message("❌ Доступ запрещён.", ephemeral=True)
+
+        await interaction.response.send_message("⛔ Бот выключается...", ephemeral=True)
         await self.bot.close()
 
 

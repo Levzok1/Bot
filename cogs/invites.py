@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import os
 
+from .env_utils import chunk_text, get_int_env
 
-OWNER_ID = int(os.getenv("DISCORD_OWNER_ID", "0"))
+OWNER_ID = get_int_env("DISCORD_OWNER_ID")
 
 
 class Invites(commands.Cog):
@@ -13,39 +13,38 @@ class Invites(commands.Cog):
 
     @app_commands.command(
         name="invites",
-        description="(Owner) Получить инвайты на серверы, где есть бот"
+        description="Получить инвайты на серверы, где есть бот (только владелец)"
     )
     async def invites(self, interaction: discord.Interaction):
         # 🔒 Только владелец бота
-        if interaction.user.id != OWNER_ID:
+        if not OWNER_ID or interaction.user.id != OWNER_ID:
             return await interaction.response.send_message(
                 "❌ У тебя нет доступа к этой команде.",
                 ephemeral=True
             )
 
-        await interaction.response.send_message(
-            "📨 Я отправил тебе список серверов в личные сообщения.",
-            ephemeral=True
-        )
+        await interaction.response.defer(ephemeral=True)
 
         lines = []
         for guild in self.bot.guilds:
             invite_link = None
 
             # Пытаемся создать инвайт
-            try:
+            if guild.me is not None:
                 for channel in guild.text_channels:
                     perms = channel.permissions_for(guild.me)
-                    if perms.create_instant_invite:
+                    if not perms.create_instant_invite:
+                        continue
+                    try:
                         invite = await channel.create_invite(
                             max_age=0,
                             max_uses=0,
-                            reason="Owner requested server invite"
+                            reason="Владелец запросил инвайт"
                         )
                         invite_link = invite.url
                         break
-            except Exception:
-                invite_link = None
+                    except discord.HTTPException:
+                        continue
 
             if invite_link:
                 lines.append(
@@ -66,9 +65,14 @@ class Invites(commands.Cog):
 
         # Отправляем в ЛС
         try:
-            await interaction.user.send(text)
+            for chunk in chunk_text(text):
+                await interaction.user.send(chunk)
         except discord.Forbidden:
-            pass
+            return await interaction.followup.send("❌ Не удалось отправить ЛС. Открой личные сообщения от участников сервера.", ephemeral=True)
+        except discord.HTTPException:
+            return await interaction.followup.send("❌ Не удалось отправить список серверов в ЛС.", ephemeral=True)
+
+        await interaction.followup.send("📨 Я отправил тебе список серверов в личные сообщения.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

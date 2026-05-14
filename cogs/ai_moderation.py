@@ -1,16 +1,16 @@
 # cogs/ai_moderation.py
 import asyncio
 import os
+import time
 from collections import defaultdict, deque
-from datetime import datetime
 
 import discord
 from discord.ext import commands
 
 try:
-    import openai
+    from openai import AsyncOpenAI
 except ImportError:
-    openai = None
+    AsyncOpenAI = None
 
 
 # Простая роль, которой можно “обходить” фильтр
@@ -35,16 +35,14 @@ def user_has_access(member: discord.Member) -> bool:
 class AIModeration(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.message_history: dict[int, deque[datetime]] = defaultdict(
+        self.message_history: dict[int, deque[float]] = defaultdict(
             lambda: deque(maxlen=SPAM_LIMIT * 2)
         )
 
         api_key = os.getenv("OPENAI_API_KEY")
-        if openai and api_key:
-            openai.api_key = api_key
-            self.ai_enabled = True
-        else:
-            self.ai_enabled = False
+        self.ai_client = AsyncOpenAI(api_key=api_key) if AsyncOpenAI and api_key else None
+        self.ai_enabled = self.ai_client is not None
+        self.ai_model = os.getenv("OPENAI_MODERATION_MODEL", "gpt-4o-mini")
 
     def is_toxic_simple(self, content: str) -> bool:
         text = content.lower()
@@ -52,40 +50,70 @@ class AIModeration(commands.Cog):
 
     async def is_toxic_ai(self, content: str) -> bool:
         """Опциональная проверка через OpenAI. По умолчанию отключена."""
-        if not self.ai_enabled:
+        if self.ai_client is None:
             return False
 
         try:
-            resp = await asyncio.to_thread(
-                openai.ChatCompletion.create,
-                model="gpt-3.5-turbo",
+            resp = await self.ai_client.chat.completions.create(
+                model=self.ai_model,
                 messages=[
                     {"role": "system", "content": "Ты фильтр токсичных сообщений. Отвечай только 'yes' или 'no'."},
                     {"role": "user", "content": f"Сообщение: {content}"},
                 ],
                 max_tokens=1,
+                temperature=0,
             )
-            answer = resp["choices"][0]["message"]["content"].strip().lower()
+            answer = (resp.choices[0].message.content or "").strip().lower()
             return answer.startswith("y")
         except Exception:
             return False
 
     def is_spam(self, message: discord.Message) -> bool:
         user_id = message.author.id
-        now = datetime.utcnow()
+        now = time.monotonic()
         history = self.message_history[user_id]
         history.append(now)
 
-        while history and (now - history[0]).total_seconds() > SPAM_WINDOW:
+        while history and now - history[0] > SPAM_WINDOW:
             history.popleft()
 
         return len(history) >= SPAM_LIMIT
 
+    async def ensure_muted_role(self, guild: discord.Guild) -> discord.Role | None:
+        muted_role = discord.utils.get(guild.roles, name="Muted")
+        if muted_role is not None:
+            return muted_role
+        if guild.me is None or not guild.me.guild_permissions.manage_roles:
+            return None
+
+        try:
+            muted_role = await guild.create_role(name="Muted", reason="Создание роли для авто-мута")
+        except discord.HTTPException:
+            return None
+
+        for channel in guild.channels:
+            overwrite = channel.overwrites_for(muted_role)
+            if isinstance(channel, discord.TextChannel):
+                overwrite.send_messages = False
+                overwrite.add_reactions = False
+            elif isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+                overwrite.speak = False
+                overwrite.connect = False
+
+            try:
+                await channel.set_permissions(muted_role, overwrite=overwrite, reason="Muted role setup")
+            except discord.HTTPException:
+                continue
+
+        return muted_role
+
     async def apply_temporary_mute(self, member: discord.Member, duration_seconds: int, reason: str):
         guild = member.guild
-        muted_role = discord.utils.get(guild.roles, name="Muted")
+        muted_role = await self.ensure_muted_role(guild)
         if muted_role is None:
-            muted_role = await guild.create_role(name="Muted")
+            return
+        if guild.me is None or member.top_role >= guild.me.top_role:
+            return
 
         await member.add_roles(muted_role, reason=reason)
 
@@ -97,7 +125,7 @@ class AIModeration(commands.Cog):
                 except discord.HTTPException:
                     pass
 
-        self.bot.loop.create_task(unmute_later())
+        asyncio.create_task(unmute_later())
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):

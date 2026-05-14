@@ -1,54 +1,61 @@
 {
-    "1385637409957613730": {
-        "914221453258420265": [
-            {
-                "action": "warn",
-                "moderator_id": 914221453258420265,
-                "reason": "Kot",
-                "extra": {},
-                "timestamp": "18.11.2025 22:50"
-            },
-            {
-                "action": "warn",
-                "moderator_id": 563702931661258764,
-                "reason": "f",
-                "extra": {},
-                "timestamp": "18.11.2025 23:39"
-            },
-            {
-                "action": "clear",
-                "moderator_id": 914221453258420265,
-                "reason": "Удалено 3 сообщений в #chat",
-                "extra": {},
-                "timestamp": "13.12.2025 01:33"
-            }
-        ],
-        "563702931661258764": [
-            {
-                "action": "ban",
-                "moderator_id": 914221453258420265,
-                "reason": "Тупой",
-                "extra": {},
-                "timestamp": "19.11.2025 15:43"
-            }
-        ]
-    },
-    "1373259338961125486": {
-        "340469225200287747": [
-            {
-                "action": "mute",
-                "moderator_id": 914221453258420265,
-                "reason": "Не нравишься",
-                "extra": {},
-                "timestamp": "20.11.2025 22:47"
-            },
-            {
-                "action": "unmute",
-                "moderator_id": 914221453258420265,
-                "reason": null,
-                "extra": {},
-                "timestamp": "20.11.2025 22:47"
-            }
-        ]
-    }
+  "1385637409957613730": {
+    "914221453258420265": [
+      {
+        "action": "warn",
+        "moderator_id": 914221453258420265,
+        "reason": "Kot",
+        "extra": {},
+        "timestamp": "18.11.2025 22:50"
+      },
+      {
+        "action": "warn",
+        "moderator_id": 563702931661258764,
+        "reason": "f",
+        "extra": {},
+        "timestamp": "18.11.2025 23:39"
+      },
+      {
+        "action": "clear",
+        "moderator_id": 914221453258420265,
+        "reason": "Удалено 3 сообщений в #chat",
+        "extra": {},
+        "timestamp": "13.12.2025 01:33"
+      }
+    ],
+    "563702931661258764": [
+      {
+        "action": "ban",
+        "moderator_id": 914221453258420265,
+        "reason": "Тупой",
+        "extra": {},
+        "timestamp": "19.11.2025 15:43"
+      },
+      {
+        "action": "unban",
+        "moderator_id": 914221453258420265,
+        "reason": "Без причины",
+        "extra": {},
+        "timestamp": "2026-05-14 17:02:00 UTC"
+      }
+    ]
+  },
+  "1373259338961125486": {
+    "340469225200287747": [
+      {
+        "action": "mute",
+        "moderator_id": 914221453258420265,
+        "reason": "Не нравишься",
+        "extra": {},
+        "timestamp": "20.11.2025 22:47"
+      },
+      {
+        "action": "unmute",
+        "moderator_id": 914221453258420265,
+        "reason": null,
+        "extra": {},
+        "timestamp": "20.11.2025 22:47"
+      }
+    ]
+  }
 }
