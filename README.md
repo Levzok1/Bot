@@ -20,8 +20,11 @@ A Discord bot implemented in Python using `discord.py`.
 
 ## Music requirements
 
-- `yt-dlp` is required for music commands.
+- `/play` accepts a direct link or a search query.
+- `yt-dlp` is required for music commands and supports YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, and many other media sites.
 - `ffmpeg` must be installed and available in your PATH.
+- Playlists are queued up to 25 tracks.
+- DRM-only services such as Spotify or Apple Music usually cannot be streamed directly.
 
 ## Windows startup
 

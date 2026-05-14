@@ -4,3 +4,4 @@ openai
 aiohttp
 yt-dlp
 PyNaCl
+audioop-lts
