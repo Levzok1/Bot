@@ -35,13 +35,12 @@ def user_has_access(member: discord.Member) -> bool:
 class AIModeration(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.message_history: dict[int, deque[float]] = defaultdict(
+        self.message_history: dict[tuple[int, int], deque[float]] = defaultdict(
             lambda: deque(maxlen=SPAM_LIMIT * 2)
         )
 
         api_key = os.getenv("OPENAI_API_KEY")
         self.ai_client = AsyncOpenAI(api_key=api_key) if AsyncOpenAI and api_key else None
-        self.ai_enabled = self.ai_client is not None
         self.ai_model = os.getenv("OPENAI_MODERATION_MODEL", "gpt-4o-mini")
 
     def is_toxic_simple(self, content: str) -> bool:
@@ -69,9 +68,8 @@ class AIModeration(commands.Cog):
             return False
 
     def is_spam(self, message: discord.Message) -> bool:
-        user_id = message.author.id
         now = time.monotonic()
-        history = self.message_history[user_id]
+        history = self.message_history[(message.guild.id, message.author.id)]
         history.append(now)
 
         while history and now - history[0] > SPAM_WINDOW:

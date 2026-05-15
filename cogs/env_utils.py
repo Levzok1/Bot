@@ -1,5 +1,4 @@
 import os
-from collections.abc import Iterable
 from typing import List
 
 
@@ -41,8 +40,3 @@ def chunk_text(text: str, limit: int = 1900) -> List[str]:
         chunks.append("\n".join(current))
 
     return chunks or [""]
-
-
-def join_nonempty(lines: Iterable[str], fallback: str) -> str:
-    text = "\n".join(line for line in lines if line)
-    return text or fallback

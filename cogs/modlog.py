@@ -55,6 +55,3 @@ async def get_guild_actions(guild_id: int) -> Dict[str, List[Dict[str, Any]]]:
 async def get_user_actions(guild_id: int, user_id: int) -> List[Dict[str, Any]]:
     return (await get_guild_actions(guild_id)).get(str(user_id), [])
 
-
-async def setup(bot):
-    return

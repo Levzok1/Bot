@@ -78,8 +78,6 @@ class DevPanel(commands.Cog):
         )
         embed.add_field(name="🌐 Серверы", value="Список серверов", inline=True)
         embed.add_field(name="📩 Инвайты", value="Инвайты", inline=True)
-        embed.add_field(name="🔄 Перезагрузить", value="Перезагрузка cog", inline=True)
-        embed.add_field(name="🚪 Выйти", value="Выход с сервера", inline=True)
         embed.add_field(name="⚙️ Инфо бота", value="Информация о боте", inline=True)
         embed.add_field(name="⛔ Выключить", value="Выключить бота", inline=True)
         return embed
@@ -127,8 +125,10 @@ class DevPanelView(discord.ui.View):
         if not owner_only(interaction):
             return await interaction.response.send_message("❌ Доступ запрещён.", ephemeral=True)
 
-        text = "\n".join(f"{g.name} ({g.id})" for g in self.bot.guilds) or "Нет серверов."
-        await interaction.response.send_message(chunk_text(text)[0], ephemeral=True)
+        chunks = chunk_text("\n".join(f"{g.name} ({g.id})" for g in self.bot.guilds) or "Нет серверов.")
+        await interaction.response.send_message(chunks[0], ephemeral=True)
+        for chunk in chunks[1:]:
+            await interaction.followup.send(chunk, ephemeral=True)
 
     @discord.ui.button(label="⛔ Выключить", style=discord.ButtonStyle.danger)
     async def shutdown(self, interaction: discord.Interaction, _):
