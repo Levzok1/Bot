@@ -36,7 +36,6 @@ EXTENSIONS = [
     "cogs.invites",
     "cogs.server",
     "cogs.config",
-    "cogs.interveis",
 ]
 
 
