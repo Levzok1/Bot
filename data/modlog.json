@@ -38,6 +38,24 @@
         "extra": {},
         "timestamp": "2026-05-14 17:02:00 UTC"
       }
+    ],
+    "1187426125857697823": [
+      {
+        "action": "randban",
+        "moderator_id": 914221453258420265,
+        "reason": "Иди нах",
+        "extra": {
+          "delete_messages_days": 0
+        },
+        "timestamp": "2026-05-15 14:47:44 UTC"
+      },
+      {
+        "action": "unban",
+        "moderator_id": 914221453258420265,
+        "reason": "Без причины",
+        "extra": {},
+        "timestamp": "2026-05-15 14:48:14 UTC"
+      }
     ]
   },
   "1373259338961125486": {
