@@ -27,12 +27,10 @@ EXTENSIONS = [
     "cogs.moderation",
     "cogs.antimat",
     "cogs.help",
-    "cogs.cs",
     "cogs.music",
     "cogs.ai_moderation",
     "cogs.antiraid",
     "cogs.dev_panel",
-    "cogs.game_stats",
     "cogs.invites",
     "cogs.server",
     "cogs.config",
@@ -85,6 +83,19 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
             await interaction.response.send_message(message, ephemeral=True)
     except Exception:
         pass
+
+
+@bot.event
+async def on_app_command_completion(interaction: discord.Interaction, command: app_commands.Command):
+    guild = interaction.guild
+    channel = interaction.channel
+    print(
+        "[CommandLog] "
+        f"user={interaction.user} ({interaction.user.id}) | "
+        f"guild={getattr(guild, 'name', 'DM')} ({getattr(guild, 'id', 'no-guild')}) | "
+        f"channel={getattr(channel, 'name', 'unknown')} ({getattr(channel, 'id', 'no-channel')}) | "
+        f"command=/{command.qualified_name}"
+    )
 
 
 async def main():

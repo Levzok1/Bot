@@ -20,11 +20,18 @@ A Discord bot implemented in Python using `discord.py`.
 
 ## Music requirements
 
-- `/play` accepts a direct link or a search query.
+- `/play` accepts a direct link, a search query, or a playlist link.
 - `yt-dlp` is required for music commands and supports YouTube, SoundCloud, Bandcamp, Vimeo, Twitch, and many other media sites.
 - `ffmpeg` must be installed and available in your PATH.
 - Install `discord.py[voice]` from `requirements.txt`; modern Discord voice channels require DAVE/E2EE support.
-- Playlist links are treated as a single track because playlist playback is disabled.
+- Playlist links add up to the first 1000 tracks to the queue.
+- Use `/queue start:240` to show the list around a specific number.
+- Use `/jump position:240` to switch playback to a specific number from the list.
+- Use `/seek seconds:90` to rewind the current track to a specific second.
+- Use `/speed value:2` or `/speed value:0.25` to change playback speed.
+- Use `/menu` or `/menul` for button controls, including queue, seek, speed, lyrics, join, and leave.
+- Music status messages are deleted after 2 minutes; `/play` URL links are echoed separately so the link remains visible.
+- Lyrics first try platform subtitles, then LRCLIB synced lyrics by title/artist; lines are shown 1 second early.
 - DRM-only services such as Spotify or Apple Music usually cannot be streamed directly.
 
 ## Windows startup
