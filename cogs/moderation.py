@@ -118,6 +118,44 @@ async def _member_action(
     return "ok"
 
 
+ACTION_WORDS = {"kick": ("кикнуть", "кикать", "кикнут"), "ban": ("забанить", "банить", "забанен")}
+SKIP_LABELS = {
+    "self": "сам себя",
+    "hierarchy": "роль не ниже твоей",
+    "bot_hierarchy": "моя роль ниже",
+    "noperm": "нет прав у бота",
+}
+
+
+def _action_error_message(action: str, result: str) -> str:
+    verb, perm_verb, _ = ACTION_WORDS[action]
+    return {
+        "self": f"Нельзя {verb} самого себя.",
+        "hierarchy": f"Нельзя {verb} участника с ролью не ниже твоей.",
+        "noperm": f"У меня нет права {perm_verb} участников.",
+        "bot_hierarchy": "Моя роль должна быть выше роли этого участника.",
+        "http_error": f"Не удалось {verb} участника. Попробуйте позже.",
+    }.get(result, "Не удалось выполнить команду на этом сервере.")
+
+
+async def _send_member_action_result(
+    interaction: discord.Interaction,
+    member: discord.Member,
+    action: str,
+    reason: Optional[str],
+    delete_days: int = 0,
+) -> None:
+    result = await _member_action(interaction, member, action, reason, delete_days)
+    if result == "ok":
+        await interaction.response.send_message(
+            f"Участник {member.mention} был {ACTION_WORDS[action][2]}. Причина: {reason or 'не указана'}.",
+            ephemeral=False,
+        )
+        return
+
+    await interaction.response.send_message(_action_error_message(action, result), ephemeral=True)
+
+
 class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -170,20 +208,7 @@ class Moderation(commands.Cog):
     @app_commands.guild_only()
     @app_commands.describe(member="Кого кикнуть", reason="Причина")
     async def kick(self, interaction: discord.Interaction, member: discord.Member, reason: Optional[str] = None) -> None:
-        result = await _member_action(interaction, member, "kick", reason)
-        if result == "self":
-            return await interaction.response.send_message("Нельзя кикнуть самого себя.", ephemeral=True)
-        if result == "hierarchy":
-            return await interaction.response.send_message("Нельзя кикнуть участника с ролью не ниже твоей.", ephemeral=True)
-        if result == "noperm":
-            return await interaction.response.send_message("У меня нет права кикать участников.", ephemeral=True)
-        if result == "bot_hierarchy":
-            return await interaction.response.send_message("Моя роль должна быть выше роли этого участника.", ephemeral=True)
-        if result == "http_error":
-            return await interaction.response.send_message("Не удалось кикнуть участника. Попробуйте позже.", ephemeral=True)
-        if result != "ok":
-            return await interaction.response.send_message("Не удалось выполнить команду на этом сервере.", ephemeral=True)
-        await interaction.response.send_message(f"Участник {member.mention} был кикнут. Причина: {reason or 'не указана'}.", ephemeral=False)
+        await _send_member_action_result(interaction, member, "kick", reason)
 
     @super_mod
     @app_commands.command(name="ban", description="Забанить участника.")
@@ -196,20 +221,7 @@ class Moderation(commands.Cog):
         reason: Optional[str] = None,
         delete_messages: app_commands.Range[int, 0, 7] = 0,
     ) -> None:
-        result = await _member_action(interaction, member, "ban", reason, delete_messages)
-        if result == "self":
-            return await interaction.response.send_message("Нельзя забанить самого себя.", ephemeral=True)
-        if result == "hierarchy":
-            return await interaction.response.send_message("Нельзя забанить участника с ролью не ниже твоей.", ephemeral=True)
-        if result == "noperm":
-            return await interaction.response.send_message("У меня нет права банить участников.", ephemeral=True)
-        if result == "bot_hierarchy":
-            return await interaction.response.send_message("Моя роль должна быть выше роли этого участника.", ephemeral=True)
-        if result == "http_error":
-            return await interaction.response.send_message("Не удалось забанить участника. Попробуйте позже.", ephemeral=True)
-        if result != "ok":
-            return await interaction.response.send_message("Не удалось выполнить команду на этом сервере.", ephemeral=True)
-        await interaction.response.send_message(f"Участник {member.mention} был забанен. Причина: {reason or 'не указана'}.", ephemeral=False)
+        await _send_member_action_result(interaction, member, "ban", reason, delete_messages)
 
     @super_mod
     @app_commands.command(name="randban", description="Рандомно забанить до 10 участников сервера.")
@@ -278,16 +290,8 @@ class Moderation(commands.Cog):
             result = await _member_action(interaction, member, "ban", reason, delete_messages)
             if result == "ok":
                 banned.append(member.mention)
-            elif result == "self":
-                skipped.append(f"{member.mention} (сам себя)")
-            elif result == "hierarchy":
-                skipped.append(f"{member.mention} (роль не ниже твоей)")
-            elif result == "bot_hierarchy":
-                skipped.append(f"{member.mention} (моя роль ниже)")
-            elif result == "noperm":
-                skipped.append(f"{member.mention} (нет прав у бота)")
             else:
-                skipped.append(f"{member.mention} (ошибка при бане)")
+                skipped.append(f"{member.mention} ({SKIP_LABELS.get(result, 'ошибка при бане')})")
 
         text = []
         if banned:

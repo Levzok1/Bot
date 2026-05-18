@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import html
+import random
 import re
 import traceback
 from urllib.parse import urlencode
@@ -20,7 +21,7 @@ except ImportError:
 
 FFMPEG_OPTIONS = {
     "before_options": (
-        "-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_at_eof 1 "
+        "-nostdin -reconnect 1 -reconnect_streamed 1 "
         "-reconnect_on_network_error 1 -reconnect_on_http_error 4xx,5xx "
         "-reconnect_delay_max 15 -rw_timeout 20000000"
     ),
@@ -276,6 +277,12 @@ class MusicControlView(discord.ui.View):
         view = QueuePageView(self.cog, self.guild_id)
         await send_temp_response(interaction, embed=embed, view=view, ephemeral=True)
 
+    @discord.ui.button(label="🔀 Перемешать", style=discord.ButtonStyle.primary)
+    async def shuffle_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.cog.log_music_action(interaction, "button shuffle")
+        result = self.cog.shuffle_queue(self.guild_id)
+        await send_temp_response(interaction, result, ephemeral=True)
+
     @discord.ui.button(label="📍 Сейчас", style=discord.ButtonStyle.secondary)
     async def now_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         self.cog.log_music_action(interaction, "button now")
@@ -527,6 +534,14 @@ class Music(commands.Cog):
             self.queues[guild_id] = []
         return self.queues[guild_id]
 
+    def shuffle_queue(self, guild_id: int) -> str:
+        queue = self.get_queue(guild_id)
+        if len(queue) < 2:
+            return "❌ Для перемешивания нужно минимум 2 трека в очереди."
+
+        random.shuffle(queue)
+        return f"🔀 Очередь перемешана. Треков в очереди: {len(queue)}."
+
     def get_play_next_lock(self, guild_id: int) -> asyncio.Lock:
         if guild_id not in self.play_next_locks:
             self.play_next_locks[guild_id] = asyncio.Lock()
@@ -642,34 +657,39 @@ class Music(commands.Cog):
         info: Optional[dict],
         requester: discord.Member,
         fallback_query: str,
+        voice_channel_id: Optional[int] = None,
     ) -> Optional[dict]:
         if not info:
             return None
 
-        return {
+        track = {
             "title": info.get("title") or info.get("fulltitle") or "Неизвестный трек",
             "url": self._entry_url(info, fallback_query),
             "duration": info.get("duration"),
             "requester": requester,
         }
+        if voice_channel_id is not None:
+            track["voice_channel_id"] = voice_channel_id
+        return track
 
     def _tracks_from_info(
         self,
         info: Optional[dict],
         requester: discord.Member,
         fallback_query: str,
+        voice_channel_id: Optional[int] = None,
     ) -> List[dict]:
         if not info:
             return []
 
         entries = info.get("entries")
         if entries is None:
-            track = self._track_from_info(info, requester, fallback_query)
+            track = self._track_from_info(info, requester, fallback_query, voice_channel_id)
             return [track] if track else []
 
         tracks = []
         for entry in entries:
-            track = self._track_from_info(entry, requester, fallback_query)
+            track = self._track_from_info(entry, requester, fallback_query, voice_channel_id)
             if track:
                 tracks.append(track)
 
@@ -1209,11 +1229,21 @@ class Music(commands.Cog):
                 return
 
             track = queue[0]
+            target_channel = None
+            voice_channel_id = track.get("voice_channel_id")
+            if voice_channel_id:
+                channel = guild.get_channel(int(voice_channel_id))
+                if isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+                    target_channel = channel
+
             requester = track.get("requester")
-            if requester and requester.voice and requester.voice.channel:
+            if target_channel is None and requester and requester.voice and requester.voice.channel:
+                target_channel = requester.voice.channel
+
+            if target_channel is not None:
                 try:
-                    voice = await self._connect_to(requester.voice.channel)
-                    print(f"[Music] Переподключились к каналу: {requester.voice.channel.name}")
+                    voice = await self._connect_to(target_channel)
+                    print(f"[Music] Переподключились к каналу: {target_channel.name}")
                 except Exception as e:
                     error_text = self._format_voice_connect_error(e)
                     print(f"[Music] Не удалось переподключиться: {error_text}")
@@ -1577,7 +1607,7 @@ class Music(commands.Cog):
             )
 
         info = await self._extract_queue_info(query)
-        tracks = self._tracks_from_info(info, interaction.user, query)
+        tracks = self._tracks_from_info(info, interaction.user, query, voice_channel_id=channel.id)
         if not tracks:
             return await send_temp_followup(interaction, "❌ Не удалось найти треки.", ephemeral=True)
 
@@ -1610,6 +1640,219 @@ class Music(commands.Cog):
             return await send_temp_followup(interaction, f"🎵 Проигрываю: **{current['title']}**", ephemeral=True)
 
         await send_temp_followup(interaction, "❌ Не удалось начать воспроизведение", ephemeral=True)
+
+    async def console_send_menu(self, channel_id: int) -> str:
+        channel = self.bot.get_channel(channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return "Текстовый канал не найден."
+
+        embed = self.create_queue_embed(channel.guild.id)
+        view = MusicControlView(self, channel.guild.id)
+        await channel.send(embed=embed, view=view)
+        return f"Музыкальное меню отправлено в #{channel.name}."
+
+    async def console_join(self, voice_channel_id: int) -> str:
+        channel = self.bot.get_channel(voice_channel_id)
+        if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            return "Голосовой канал не найден."
+
+        voice = channel.guild.voice_client
+        try:
+            if voice and voice.is_connected():
+                await voice.move_to(channel)
+            else:
+                await self._connect_to(channel)
+        except Exception as e:
+            return f"Не удалось подключиться: {self._format_voice_connect_error(e)}"
+
+        self._cancel_idle_disconnect(channel.guild.id)
+        return f"Подключился к голосовому каналу: {channel.name}."
+
+    async def console_leave(self, guild_id: int) -> str:
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return "Сервер не найден."
+
+        voice = guild.voice_client
+        if not voice or not voice.is_connected():
+            return "Бот не подключен к голосовому каналу."
+
+        self._cancel_idle_disconnect(guild_id)
+        await self._stop_lyrics(guild_id)
+        self.queues.pop(guild_id, None)
+        self.now_playing.pop(guild_id, None)
+        await voice.disconnect()
+        return "Отключился от голосового канала."
+
+    async def console_play(self, voice_channel_id: int, query: str) -> str:
+        channel = self.bot.get_channel(voice_channel_id)
+        if not isinstance(channel, (discord.VoiceChannel, discord.StageChannel)):
+            return "Голосовой канал не найден."
+
+        if yt_dlp is None:
+            return "yt-dlp не установлен."
+
+        if shutil.which("ffmpeg") is None:
+            return "ffmpeg не найден в PATH."
+
+        guild = channel.guild
+        requester = guild.me
+        if requester is None:
+            return "Не удалось получить участника бота на сервере."
+
+        voice = guild.voice_client
+        try:
+            if voice and voice.is_connected():
+                if voice.channel != channel:
+                    await voice.move_to(channel)
+            else:
+                voice = await self._connect_to(channel)
+        except Exception as e:
+            return f"Не удалось подключиться: {self._format_voice_connect_error(e)}"
+
+        print(f"[MusicConsole] Ищу: {query}")
+        info = await self._extract_queue_info(query)
+        tracks = self._tracks_from_info(info, requester, query, voice_channel_id=channel.id)
+        if not tracks:
+            return "Не удалось найти треки."
+
+        guild_id = guild.id
+        self._cancel_idle_disconnect(guild_id)
+        queue = self.get_queue(guild_id)
+        queue.extend(tracks)
+
+        if voice.is_playing() or voice.is_paused():
+            return self._format_added_tracks_message(tracks, info.get("title") if len(tracks) > 1 else None)
+
+        await asyncio.sleep(0.2)
+        await self._play_next(guild_id, voice)
+        current = self.now_playing.get(guild_id)
+        if current:
+            return f"Проигрываю: {current['title']}"
+        return "Треки добавлены, но воспроизведение не началось."
+
+    async def console_skip(self, guild_id: int) -> str:
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return "Сервер не найден."
+
+        voice = guild.voice_client
+        if not voice or not voice.is_connected():
+            return "Бот не подключен к голосовому каналу."
+        if not (voice.is_playing() or voice.is_paused()):
+            return "Сейчас ничего не играет."
+
+        voice.stop()
+        return "Трек пропущен."
+
+    async def console_stop(self, guild_id: int) -> str:
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return "Сервер не найден."
+
+        voice = guild.voice_client
+        if not voice or not voice.is_connected():
+            return "Бот не подключен к голосовому каналу."
+
+        self._cancel_idle_disconnect(guild_id)
+        await self._stop_lyrics(guild_id)
+        self.queues.pop(guild_id, None)
+        self.now_playing.pop(guild_id, None)
+        if voice.is_playing() or voice.is_paused():
+            voice.stop()
+        self._schedule_idle_disconnect(guild_id)
+        return "Музыка остановлена, очередь очищена."
+
+    def console_shuffle(self, guild_id: int) -> str:
+        if not self.bot.get_guild(guild_id):
+            return "Сервер не найден."
+        return self.shuffle_queue(guild_id)
+
+    async def console_jump(self, guild_id: int, position: int) -> str:
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return "Сервер не найден."
+
+        total = self.get_visible_queue_item_count(guild_id)
+        if total == 0:
+            return "Список песен пустой."
+        if position < 1 or position > total:
+            return f"Номер должен быть от 1 до {total}."
+
+        voice = guild.voice_client
+        if not voice or not voice.is_connected():
+            return "Бот не подключен к голосовому каналу."
+
+        current = self.now_playing.get(guild_id)
+        if current and position == 1:
+            if voice.is_paused():
+                voice.resume()
+                self._mark_track_resumed(guild_id)
+                return "Воспроизведение продолжено."
+            return "Этот трек уже играет."
+
+        queue = self.get_queue(guild_id)
+        target_index = position - (2 if current else 1)
+        if target_index < 0 or target_index >= len(queue):
+            return "Не удалось найти этот номер в очереди."
+
+        target = queue[target_index]
+        if target_index:
+            del queue[:target_index]
+
+        self._cancel_idle_disconnect(guild_id)
+        if voice.is_playing() or voice.is_paused():
+            voice.stop()
+        else:
+            await self._play_next(guild_id, voice)
+
+        return f"Переключаюсь на #{position}: {target['title']}"
+
+    def console_queue_text(self, guild_id: int) -> str:
+        total = self.get_visible_queue_item_count(guild_id)
+        if total == 0:
+            return "Очередь пустая."
+
+        lines = []
+        for position in range(1, total + 1):
+            visible = self.get_visible_track(guild_id, position)
+            if not visible:
+                continue
+            track, is_current = visible
+            marker = "▶ " if is_current else ""
+            duration = self._format_duration(track.get("duration"))
+            lines.append(f"{position}. {marker}{track['title']} ({duration})")
+        return "\n".join(lines)
+
+    def console_now_text(self, guild_id: int) -> str:
+        current = self.now_playing.get(guild_id)
+        if not current:
+            return "Сейчас ничего не играет."
+        return f"{current['title']}\n{self._progress_text(guild_id, current)}"
+
+    async def console_lyrics(self, guild_id: int, channel_id: int, enabled: bool) -> str:
+        guild = self.bot.get_guild(guild_id)
+        if not guild:
+            return "Сервер не найден."
+
+        if not enabled:
+            self.lyrics_channels.pop(guild_id, None)
+            await self._stop_lyrics(guild_id)
+            return "Субтитры выключены."
+
+        channel = guild.get_channel(channel_id)
+        if not isinstance(channel, discord.TextChannel):
+            return "Текстовый канал не найден."
+
+        self.lyrics_channels[guild_id] = channel.id
+        current = self.now_playing.get(guild_id)
+        if current:
+            await self._stop_lyrics(guild_id)
+            info = await self._extract_track_info(current["url"])
+            if info and self.now_playing.get(guild_id) is current:
+                self._start_lyrics_task(guild_id, current, info)
+                return f"Субтитры включены в #{channel.name} для текущей песни."
+        return f"Субтитры включены в #{channel.name}; начну со следующей песни."
 
     async def jump_to_position(self, interaction: discord.Interaction, position: int):
         if not interaction.guild:
@@ -1862,7 +2105,7 @@ class Music(commands.Cog):
 
         print(f"[Music] Ищу: {query}")
         info = await self._extract_queue_info(query)
-        tracks = self._tracks_from_info(info, interaction.user, query)
+        tracks = self._tracks_from_info(info, interaction.user, query, voice_channel_id=channel.id)
 
         if not tracks:
             return await send_temp_followup(
@@ -1928,22 +2171,6 @@ class Music(commands.Cog):
     @app_commands.guild_only()
     async def menu(self, interaction: discord.Interaction):
         self.log_music_action(interaction, "command /menu")
-        if not interaction.guild:
-            return await send_temp_response(
-                interaction,
-                "Эта команда работает только на сервере",
-                ephemeral=True,
-            )
-
-        guild_id = interaction.guild.id
-        embed = self.create_queue_embed(guild_id)
-        view = MusicControlView(self, guild_id)
-        await send_temp_response(interaction, embed=embed, view=view)
-
-    @app_commands.command(name="menul", description="Открыть музыкальное меню с кнопками")
-    @app_commands.guild_only()
-    async def menul(self, interaction: discord.Interaction):
-        self.log_music_action(interaction, "command /menul")
         if not interaction.guild:
             return await send_temp_response(
                 interaction,
@@ -2030,6 +2257,19 @@ class Music(commands.Cog):
         embed = self.create_queue_embed(guild_id, start=start)
         view = QueuePageView(self, guild_id, start=start)
         await send_temp_response(interaction, embed=embed, view=view)
+
+    @app_commands.command(name="shuffle", description="Перемешать очередь музыки")
+    @app_commands.guild_only()
+    async def shuffle(self, interaction: discord.Interaction):
+        self.log_music_action(interaction, "command /shuffle")
+        if not interaction.guild:
+            return await send_temp_response(
+                interaction,
+                "Эта команда работает только на сервере",
+                ephemeral=True,
+            )
+
+        await send_temp_response(interaction, self.shuffle_queue(interaction.guild.id), ephemeral=True)
 
     @app_commands.command(name="jump", description="Переключиться на песню по номеру из списка")
     @app_commands.guild_only()

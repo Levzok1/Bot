@@ -1,7 +1,8 @@
-import json
 from pathlib import Path
 import asyncio
 from typing import Any, Dict, Optional
+
+from .json_store import load_json, save_json
 
 SETTINGS_FILE = Path(__file__).resolve().parents[1] / "data" / "guild_settings.json"
 DEFAULT_SETTINGS: Dict[str, Any] = {"moderator_role_names": "", "antimat_enabled": True}
@@ -9,18 +10,11 @@ _lock = asyncio.Lock()
 
 
 def _load_all() -> Dict[str, Dict[str, Any]]:
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if not SETTINGS_FILE.exists():
-        SETTINGS_FILE.write_text("{}", encoding="utf-8")
-    try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError:
-        return {}
+    return load_json(SETTINGS_FILE, {})
 
 
 def _save_all(data: Dict[str, Dict[str, Any]]) -> None:
-    SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(SETTINGS_FILE, data)
 
 
 async def get_guild_settings(guild_id: int) -> Dict[str, Any]:

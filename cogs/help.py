@@ -27,6 +27,9 @@ class Help(commands.Cog):
                 "`/mban member1 [member2] [reason] [delete_messages]` — Забанить до двух участников.\n"
                 "`/randban [count] [reason]` — Рандомно забанить до 10 участников.\n"
                 "`/unban user [reason]` — Разбанить пользователя.\n"
+                "`/warn member [reason]` — Выдать варн и применить авто-наказание.\n"
+                "`/warnings member` — Показать активные варны участника.\n"
+                "`/clearwarns member [reason]` или `/unwarn member [reason]` — Снять активные варны участника.\n"
                 "`/modlog [user]` — Показать журнал модерации сервера или пользователя."
             ),
             inline=False
@@ -50,8 +53,9 @@ class Help(commands.Cog):
                 "`/join` — Подключить бота в голосовой канал.\n"
                 "`/leave` — Отключить бота из голосового канала.\n"
                 "`/play query` — Проиграть трек или плейлист по ссылке/названию.\n"
-                "`/menu` / `/menul` — Открыть меню с кнопками управления музыкой.\n"
+                "`/menu` — Открыть меню с кнопками управления музыкой.\n"
                 "`/skip` — Пропустить текущий трек.\n"
+                "`/shuffle` — Перемешать очередь музыки.\n"
                 "`/stop` — Остановить музыку и очистить очередь.\n"
                 "`/queue [start]` — Показать список песен с нужного номера.\n"
                 "`/jump position` — Переключиться на песню по номеру из списка.\n"
@@ -85,6 +89,17 @@ class Help(commands.Cog):
         )
 
         # 🛠 ПАНЕЛЬ РАЗРАБОТЧИКА
+        embed.add_field(
+            name="🎭 Reaction roles",
+            value=(
+                "`/reactionroles create` — Создать сообщение с ролями по реакциям.\n"
+                "`/reactionroles add` — Добавить emoji -> роль к сообщению.\n"
+                "`/reactionroles remove` — Удалить emoji -> роль.\n"
+                "`/reactionroles list` — Показать настроенные сообщения."
+            ),
+            inline=False
+        )
+
         embed.add_field(
             name="🛠 Панель разработчика",
             value=(

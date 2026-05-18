@@ -1,26 +1,20 @@
-import json
 from pathlib import Path
 import asyncio
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+
+from .json_store import load_json, save_json
 
 MODLOG_FILE = Path(__file__).resolve().parents[1] / "data" / "modlog.json"
 _lock = asyncio.Lock()
 
 
 def _load_all() -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
-    MODLOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    if not MODLOG_FILE.exists():
-        MODLOG_FILE.write_text("{}", encoding="utf-8")
-    try:
-        data = json.loads(MODLOG_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError:
-        return {}
+    return load_json(MODLOG_FILE, {})
 
 
 def _save_all(data: Dict[str, Dict[str, List[Dict[str, Any]]]]) -> None:
-    MODLOG_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    save_json(MODLOG_FILE, data)
 
 
 async def log_mod_action(

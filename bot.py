@@ -18,6 +18,7 @@ if not TOKEN:
 intents = discord.Intents.default()
 intents.guilds = True
 intents.members = True
+intents.reactions = True
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -25,6 +26,7 @@ commands_synced = False
 
 EXTENSIONS = [
     "cogs.moderation",
+    "cogs.warnings",
     "cogs.antimat",
     "cogs.help",
     "cogs.music",
@@ -34,6 +36,9 @@ EXTENSIONS = [
     "cogs.invites",
     "cogs.server",
     "cogs.config",
+    "cogs.reaction_roles",
+    "cogs.dashboard_api",
+    "cogs.console",
 ]
 
 

@@ -75,5 +75,74 @@
         "timestamp": "20.11.2025 22:47"
       }
     ]
+  },
+  "1237798190003257374": {
+    "0": [
+      {
+        "action": "clear",
+        "moderator_id": 914221453258420265,
+        "reason": "Удалено 10 сообщений в #💅музончик💅",
+        "extra": {
+          "channel_id": 1372279354553405581,
+          "deleted": 10
+        },
+        "timestamp": "2026-05-16 11:33:20 UTC"
+      },
+      {
+        "action": "clear",
+        "moderator_id": 914221453258420265,
+        "reason": "Удалено 20 сообщений в #💅музончик💅",
+        "extra": {
+          "channel_id": 1372279354553405581,
+          "deleted": 20
+        },
+        "timestamp": "2026-05-16 11:33:41 UTC"
+      }
+    ],
+    "564868256834519051": [
+      {
+        "action": "warn",
+        "moderator_id": 914221453258420265,
+        "reason": "Так хочу",
+        "extra": {
+          "active_warnings": 1,
+          "tier": {
+            "warns": 1,
+            "action": "none",
+            "durationMinutes": 0,
+            "label": "Предупреждение"
+          },
+          "warning_id": "1778965969-914221453258420265",
+          "punishment": "Предупреждение записано."
+        },
+        "timestamp": "2026-05-16 21:12:49 UTC"
+      },
+      {
+        "action": "warn",
+        "moderator_id": 914221453258420265,
+        "reason": "2",
+        "extra": {
+          "active_warnings": 2,
+          "tier": {
+            "warns": 2,
+            "action": "timeout",
+            "durationMinutes": 10,
+            "label": "Мут 10 минут"
+          },
+          "warning_id": "1778965994-914221453258420265",
+          "punishment": "Выдан мут на 10 мин."
+        },
+        "timestamp": "2026-05-16 21:13:14 UTC"
+      },
+      {
+        "action": "clearwarns",
+        "moderator_id": 914221453258420265,
+        "reason": "Без причины",
+        "extra": {
+          "removed": 2
+        },
+        "timestamp": "2026-05-16 21:14:27 UTC"
+      }
+    ]
   }
 }

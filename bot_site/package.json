@@ -1,0 +1,13 @@
+{
+  "name": "discord-bot-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "serve": "python -m http.server 4173",
+    "lint": "node --check app.js && node --check api.js && node --check scripts/check-site.mjs",
+    "test": "node scripts/check-site.mjs",
+    "build": "node scripts/check-site.mjs"
+  },
+  "devDependencies": {}
+}

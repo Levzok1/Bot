@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Панель Discord-бота</title>
+  <meta name="description" content="Панель управления Discord ботом на русском языке.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="server-rail" id="serverRail" aria-label="Серверы">
+      <button class="server-dot active" title="Главная" data-route="overview">
+        <img src="./assets/bot-mark.svg" alt="">
+      </button>
+      <button class="server-dot add-dot" title="Загрузить серверы" data-route="settings">+</button>
+    </aside>
+
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="./assets/bot-mark.svg" alt="" class="brand-mark">
+        <div>
+          <strong>Панель бота</strong>
+          <span>панель сервера</span>
+        </div>
+      </div>
+
+      <button class="server-select" data-route="settings">
+        <span>
+          <strong id="selectedGuildName">Мой сервер</strong>
+          <small id="selectedGuildId">ID сервера не задан</small>
+        </span>
+        <span class="chevron">⌄</span>
+      </button>
+
+      <nav id="sideNav" class="side-nav" aria-label="Навигация"></nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="pageEyebrow">Панель</p>
+          <h1 id="pageTitle">Обзор модулей</h1>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button" id="searchFocus" title="Поиск команд">⌘</button>
+          <button class="text-button" data-route="commands">Команды</button>
+          <button class="text-button" data-route="console">Консоль</button>
+          <button class="primary-button" data-route="settings">Подключить</button>
+        </div>
+      </header>
+
+      <section id="content" class="content" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="./api.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

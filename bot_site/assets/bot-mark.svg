@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Bot Panel">
+  <rect width="96" height="96" rx="24" fill="#17181d"/>
+  <path d="M24 41c0-12.7 10.3-23 23-23h2c12.7 0 23 10.3 23 23v14c0 12.7-10.3 23-23 23h-2c-12.7 0-23-10.3-23-23V41Z" fill="#6257ff"/>
+  <path d="M32 43c0-7.7 6.3-14 14-14h4c7.7 0 14 6.3 14 14v10c0 7.7-6.3 14-14 14h-4c-7.7 0-14-6.3-14-14V43Z" fill="#f4f6fb"/>
+  <circle cx="42" cy="48" r="4" fill="#17181d"/>
+  <circle cx="55" cy="48" r="4" fill="#17181d"/>
+  <path d="M39 58c5.2 3 12.8 3 18 0" stroke="#17181d" stroke-width="4" stroke-linecap="round"/>
+  <path d="M29 39l-7-7M67 39l7-7" stroke="#45e6a6" stroke-width="5" stroke-linecap="round"/>
+</svg>

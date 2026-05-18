@@ -26,7 +26,7 @@ def parse_words(raw_words: str) -> list[str]:
     parsed_words = []
     seen = set()
 
-    for raw_word in raw_words.split(","):
+    for raw_word in raw_words.replace("\n", ",").split(","):
         word = raw_word.strip().lower()
         if word and word not in seen:
             parsed_words.append(word)
@@ -58,6 +58,67 @@ class AntiMat(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def _require_word_manager(self, interaction: discord.Interaction) -> bool:
+        if not isinstance(interaction.user, discord.Member):
+            await interaction.response.send_message("Эта команда доступна только на сервере.", ephemeral=True)
+            return False
+
+        if not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
+            return False
+
+        return True
+
+    async def _add_words(self, interaction: discord.Interaction, raw_words: str):
+        if not await self._require_word_manager(interaction):
+            return
+
+        requested_words = parse_words(raw_words)
+        if not requested_words:
+            return await interaction.response.send_message("❌ Список слов не может быть пустым.", ephemeral=True)
+
+        words = load_words()
+        existing_words = set(words)
+        added_words = [item for item in requested_words if item not in existing_words]
+        skipped_words = [item for item in requested_words if item in existing_words]
+
+        if not added_words:
+            message = "⚠ Все эти слова уже есть в списке:\n" + format_words(skipped_words)
+            return await send_chunked(interaction, message, ephemeral=True)
+
+        words.extend(added_words)
+        save_words(words)
+
+        message_parts = [f"➕ Добавлено слов: **{len(added_words)}**", format_words(added_words)]
+        if skipped_words:
+            message_parts.extend(["", f"⚠ Уже были в списке: **{len(skipped_words)}**", format_words(skipped_words)])
+        await send_chunked(interaction, "\n".join(message_parts))
+
+    async def _delete_words(self, interaction: discord.Interaction, raw_words: str):
+        if not await self._require_word_manager(interaction):
+            return
+
+        requested_words = parse_words(raw_words)
+        if not requested_words:
+            return await interaction.response.send_message("❌ Список слов не может быть пустым.", ephemeral=True)
+
+        words = load_words()
+        existing_words = set(words)
+        removed_words = [item for item in requested_words if item in existing_words]
+        missing_words = [item for item in requested_words if item not in existing_words]
+
+        if not removed_words:
+            message = "❌ Этих слов нет в списке:\n" + format_words(missing_words)
+            return await send_chunked(interaction, message, ephemeral=True)
+
+        removed_set = set(removed_words)
+        save_words([item for item in words if item not in removed_set])
+
+        message_parts = [f"🗑 Удалено слов: **{len(removed_words)}**", format_words(removed_words)]
+        if missing_words:
+            message_parts.extend(["", f"⚠ Не найдены: **{len(missing_words)}**", format_words(missing_words)])
+        await send_chunked(interaction, "\n".join(message_parts))
+
     # ===== ФИЛЬТР СООБЩЕНИЙ =====
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
@@ -86,69 +147,26 @@ class AntiMat(commands.Cog):
     @app_commands.guild_only()
     @app_commands.describe(word="Одно слово или несколько слов через запятую")
     async def addword(self, interaction: discord.Interaction, word: str):
-        if not isinstance(interaction.user, discord.Member):
-            return await interaction.response.send_message("Эта команда доступна только на сервере.", ephemeral=True)
+        await self._add_words(interaction, word)
 
-        if not interaction.user.guild_permissions.manage_messages:
-            return await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
-
-        requested_words = parse_words(word)
-        if not requested_words:
-            return await interaction.response.send_message("❌ Список слов не может быть пустым.", ephemeral=True)
-
-        words = load_words()
-        existing_words = set(words)
-
-        added_words = [item for item in requested_words if item not in existing_words]
-        skipped_words = [item for item in requested_words if item in existing_words]
-
-        if not added_words:
-            message = "⚠ Все эти слова уже есть в списке:\n" + format_words(skipped_words)
-            return await send_chunked(interaction, message, ephemeral=True)
-
-        words.extend(added_words)
-        save_words(words)
-
-        message_parts = [f"➕ Добавлено слов: **{len(added_words)}**", format_words(added_words)]
-        if skipped_words:
-            message_parts.extend(["", f"⚠ Уже были в списке: **{len(skipped_words)}**", format_words(skipped_words)])
-
-        await send_chunked(interaction, "\n".join(message_parts))
+    @app_commands.command(name="addworl", description="Алиас /addword: добавить несколько слов через запятую")
+    @app_commands.guild_only()
+    @app_commands.describe(word="Одно слово или несколько слов через запятую")
+    async def addworl(self, interaction: discord.Interaction, word: str):
+        await self._add_words(interaction, word)
 
     # ===== /delword =====
     @app_commands.command(name="delword", description="Удалить слово или несколько слов из бан-листа")
     @app_commands.guild_only()
     @app_commands.describe(word="Одно слово или несколько слов через запятую")
     async def delword(self, interaction: discord.Interaction, word: str):
-        if not isinstance(interaction.user, discord.Member):
-            return await interaction.response.send_message("Эта команда доступна только на сервере.", ephemeral=True)
+        await self._delete_words(interaction, word)
 
-        if not interaction.user.guild_permissions.manage_messages:
-            return await interaction.response.send_message("❌ У вас нет прав!", ephemeral=True)
-
-        requested_words = parse_words(word)
-        if not requested_words:
-            return await interaction.response.send_message("❌ Список слов не может быть пустым.", ephemeral=True)
-
-        words = load_words()
-        existing_words = set(words)
-
-        removed_words = [item for item in requested_words if item in existing_words]
-        missing_words = [item for item in requested_words if item not in existing_words]
-
-        if not removed_words:
-            message = "❌ Этих слов нет в списке:\n" + format_words(missing_words)
-            return await send_chunked(interaction, message, ephemeral=True)
-
-        removed_set = set(removed_words)
-        words = [item for item in words if item not in removed_set]
-        save_words(words)
-
-        message_parts = [f"🗑 Удалено слов: **{len(removed_words)}**", format_words(removed_words)]
-        if missing_words:
-            message_parts.extend(["", f"⚠ Не найдены: **{len(missing_words)}**", format_words(missing_words)])
-
-        await send_chunked(interaction, "\n".join(message_parts))
+    @app_commands.command(name="delworl", description="Алиас /delword: удалить несколько слов через запятую")
+    @app_commands.guild_only()
+    @app_commands.describe(word="Одно слово или несколько слов через запятую")
+    async def delworl(self, interaction: discord.Interaction, word: str):
+        await self._delete_words(interaction, word)
 
     # ===== /words =====
     @app_commands.command(name="words", description="Показать список запрещённых слов")
